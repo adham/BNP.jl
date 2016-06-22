@@ -1,7 +1,7 @@
 #=
 demo_HDP_Gaussian1DGaussian1D
 
-A demo for Hierarchical Dirichlet Process mixture models with Gaussian1DGaussian1D 
+A demo for Hierarchical Dirichlet Process mixture models with Gaussian1DGaussian1D
 Bayesian components. This demo uses auxiliary variable method for for inference.
 
 28/07/2015
@@ -9,6 +9,29 @@ Adham Beyki, odinay@gmail.com
 =#
 
 using BNP
+
+
+
+function collapsed_gibbs_sampler{T1, T2}(
+    hdp::HDP{T1},
+    KK_truncation::Int,
+    xx::Vector{Vector{T2}},
+    zz::Vector{Vector{Int}},
+    n_burnins::Int, n_lags::Int, n_samples::Int,
+    sample_hyperparam::Bool=true, n_internals::Int=10,
+    store_every::Int=100, filename::ASCIIString="HDP_results_",
+    KK_list::Vector{Int}=Int[],
+    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
+
+
+end
+
+
+
+
+
+
+
 
 ## --- synthesizing the data --- ##
 true_gg     = 1.0
@@ -19,7 +42,7 @@ join_tables = true
 
 true_tji, true_njt, true_kjt, true_nn, true_mm, true_zz, true_KK = BNP.gen_CRF_data(n_group_j, true_gg, true_aa, join_tables)
 
-vv = 0.001			# fixed variance
+vv = 0.001          # fixed variance
 ss = 2
 true_atoms = [Gaussian1D(ss*kk, vv) for kk = 1:true_KK]
 
@@ -51,7 +74,7 @@ hdp = HDP(q0, hdp_KK_init, hdp_gg, hdp_g1, hdp_g2, hdp_aa, hdp_a1, hdp_a2)
 # sampling
 zz = Array(Vector{Int}, n_groups)
 for jj = 1:n_groups
-	zz[jj] = ones(Int, n_group_j[jj])
+    zz[jj] = ones(Int, n_group_j[jj])
     zz[jj] = rand(1:hdp.KK, n_group_j[jj])
 end
 
@@ -64,10 +87,13 @@ store_every = 100
 filename    = "demo_HDP_Gaussian1DGaussian1D_"
 
 
-KK_list, KK_dict, betas, gammas, alphas = collapsed_gibbs_sampler(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
+#=
+ KK_list, KK_dict, betas, gammas, alphas = collapsed_gibbs_sampler(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
 
 # posterior distributions
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
 posterior_components, nn, pij = posterior(hdp, xx, KK_dict, candidate_KK)
+=#
+

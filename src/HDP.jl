@@ -149,10 +149,11 @@ function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
 
     # resampling the top level concentration parameter γ, Escobar and West 95
     eta = rand(Distributions.Beta(hdp.gg+1, m))
-    pi_eta = 1 / (1 + (m*(hdp.g2 - log(eta))) / (hdp.g1 + hdp.KK - 1))
+    rr = (hdp.g1 + hdp.KK - 1) / (m*(hdp.g2 - log(eta)))
+    pi_eta = rr / (1.0 + rr)
 
     if rand() < pi_eta
-        hdp.gg = rand(Distributions.Gamma(hdp.g1+hdp.KK)) / (hdp.g2-log(eta))
+        hdp.gg = rand(Distributions.Gamma(hdp.g1 + hdp.KK)) / (hdp.g2-log(eta))
     else
         hdp.gg = rand(Distributions.Gamma(hdp.g1+hdp.KK-1)) / (hdp.g2-log(eta))
     end
@@ -204,7 +205,7 @@ function collapsed_gibbs_sampler{T1, T2}(
         KK_list = vcat(KK_list, zeros(Int, n_samples))
     end
 
-    snumbers_file = string(Pkg.dir(), "\\BIAS\\src\\StirlingNums_10K.mat")
+    snumbers_file = string(Pkg.dir(), "\\BNP\\src\\StirlingNums_10K.mat")
     snumbers_data = MAT.matread(snumbers_file)
     snumbers = snumbers_data["snumbersNormalizedSparse"]
 

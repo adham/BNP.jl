@@ -34,8 +34,8 @@ function sample_hyperparam!(dpm::DPM, NN::Int, iters::Int)
 
     for n = 1:iters
         eta = rand(Distributions.Beta(dpm.aa+1, NN))
-        rr = (dpm.aa1+dpm.KK-1) / (n*(dpm.aa2-log(eta)))
-        pi_eta = rr / (1.0+rr)
+        rr = (dpm.aa1 + dpm.KK - 1) / (n*(dpm.aa2 - log(eta)))
+        pi_eta = rr / (1.0 + rr)
 
         if rand() < pi_eta
             dpm.aa = rand(Distributions.Gamma(dpm.aa1+dpm.KK)) / (dpm.aa2-log(eta))
@@ -63,7 +63,7 @@ function storesample{T}(
         dummy_filename = string(filename, "_", sample_n, ".h5")
     end
 
-    KK_dict_keys = keys(KK_dict)
+    KK_dict_keys = collect(keys(KK_dict))
 
     println("storing on disk...")
     HDF5.h5open(dummy_filename, "w") do file
@@ -278,6 +278,7 @@ function truncated_gibbs_sampler{T1, T2}(
 
             # 2
             # sample zz
+            pp = zeros(Float64, KK_truncation)
             for kk = 1:KK_truncation
                 pp[kk] = log(pi_tilde[kk]) + sum(log(1-pi_tilde[1:kk-1])) + logpredictive(components[kk], xx[ii])
             end
@@ -291,7 +292,7 @@ function truncated_gibbs_sampler{T1, T2}(
             nn[kk] += 1
             additem!(components[kk], xx[ii])
             log_likelihood += loglikelihood(components[kk], xx[ii])
-        end
+        end # ii
 
 
         # 4
