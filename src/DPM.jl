@@ -348,7 +348,7 @@ end
 function posterior{T1, T2}(
     dpm::DPM{T1},
     xx::Vector{T2},
-    KK_dict::Dict{Int, Vector{Int}},
+    zz::Vector{Int},
     KK::Int)
 
 
@@ -357,7 +357,6 @@ function posterior{T1, T2}(
         components[kk] = deepcopy(dpm.component)
     end
 
-    zz = KK_dict[KK]
     NN = length(xx)
     nn = zeros(Int, KK)
 

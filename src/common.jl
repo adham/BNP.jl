@@ -170,3 +170,12 @@ macro check_args(D, cond)
         end
     end
 end
+
+function stick_breaking(vv::Vector{Float64})
+    KK = length(vv)
+    pp = ones(Float64, KK)
+
+    pp[2:KK] = 1-vv[1:KK-1]
+    pp = vv .* cumprod(pp)
+    pp
+end
