@@ -141,8 +141,8 @@ KK_list, KK_dict, w_tilde = truncated_gibbs_sampler(dhdp, KK_truncation, xx, zz,
     n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, results_path, filename)
 
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
-candidate_K = indmax(KK_hist)
-posterior_components, nn = posterior(dhdp, xx, KK_dict[candidate_K], candidate_K)
+candidate_KK = indmax(KK_hist)
+posterior_components, nn = posterior(dhdp, xx, KK_dict[candidate_KK], candidate_KK)
 
 
 

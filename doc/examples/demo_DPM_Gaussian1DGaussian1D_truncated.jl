@@ -66,4 +66,4 @@ KK_list, KK_dict = truncated_gibbs_sampler(dpm, KK_truncation, xx, zz,
 
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
-posterior_components, nn = posterior(dpm, xx, KK_dict[candidate_K], candidate_KK)
+posterior_components, nn = posterior(dpm, xx, KK_dict[candidate_KK], candidate_KK)

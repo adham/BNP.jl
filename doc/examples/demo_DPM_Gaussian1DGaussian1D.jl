@@ -67,4 +67,4 @@ KK_list, KK_dict = collapsed_gibbs_sampler(dpm, xx, zz,
 # posterior distributions
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
-posterior_components, nn = posterior(dpm, xx, KK_dict[candidate_K], candidate_KK)
+posterior_components, nn = posterior(dpm, xx, KK_dict[candidate_KK], candidate_KK)
