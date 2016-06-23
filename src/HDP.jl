@@ -890,35 +890,9 @@ function truncated_gibbs_sampler{T1, T2}(
         hdp.KK = count_active_clusters(nn)
 
 
+
+
         # B
-        # resample hyper parameters
-        if sample_hyperparam
-            M = zeros(Int, n_groups, KK_truncation)
-            for hh in 1:n_internals
-                for jj = 1:n_groups
-                    for kk = 1:KK_truncation
-                        if sum(nn[:, kk]) != 0
-                            if nn[jj, kk] == 0
-                                M[jj, kk] = 0
-                            else
-                                rr = zeros(Float64, nn[jj, kk])
-                                for mm = 1:nn[jj, kk]
-                                    rr[mm] = log(snumbers[nn[jj, kk], mm]) + mm*log(hdp.aa * my_beta[kk])
-                                end
-                                lognormalize!(rr)
-                                M[jj, kk] = sample(rr)
-                            end
-                        end
-                    end # kk
-                end # n_groups
-
-                m = sum(M)
-                sample_hyperparam!(hdp, n_group_j, m)
-            end # n_internals
-        end # sample_hyperparam
-
-
-        # C
         # resample beta and pi
 
         # resample my_beta
@@ -946,6 +920,33 @@ function truncated_gibbs_sampler{T1, T2}(
             pi_tilde[jj, KK_truncation] = 1.0
         end
 
+
+        # C
+        # resample hyper parameters
+        if sample_hyperparam
+            M = zeros(Int, n_groups, KK_truncation)
+            for hh in 1:n_internals
+                for jj = 1:n_groups
+                    for kk = 1:KK_truncation
+                        if sum(nn[:, kk]) != 0
+                            if nn[jj, kk] == 0
+                                M[jj, kk] = 0
+                            else
+                                rr = zeros(Float64, nn[jj, kk])
+                                for mm = 1:nn[jj, kk]
+                                    rr[mm] = log(snumbers[nn[jj, kk], mm]) + mm*log(hdp.aa * my_beta[kk])
+                                end
+                                lognormalize!(rr)
+                                M[jj, kk] = sample(rr)
+                            end
+                        end
+                    end # kk
+                end # n_groups
+
+                m = sum(M)
+                sample_hyperparam!(hdp, n_group_j, m)
+            end # n_internals
+        end # sample_hyperparam
 
         elapsed_time = toq()
 

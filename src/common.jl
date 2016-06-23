@@ -179,3 +179,27 @@ function stick_breaking(vv::Vector{Float64})
     pp = vv .* cumprod(pp)
     pp
 end
+
+function log_stick_breaking(vv::Vector{Float64})
+  KK = length(vv)
+  pp = zeros(Float64, KK)
+
+  pp[2:KK] = log(1 - vv[1:KK-1])
+  pp = log(vv) + cumsum(pp)
+  pp
+end
+
+"""
+vertical cumulative sum in reverse order
+from bottom to top
+"""
+function reverse_cumsum{T}(nn::Matrix{T})
+
+  J = size(nn, 1)
+  mm = zeros(T, J, J)
+  mm[J, :] = nn[J, :]
+  for jj = 2:J
+    mm[J-jj+1, :] = nn[J-jj+1, :] + mm[J-jj+2, :]
+  end
+  mm
+end

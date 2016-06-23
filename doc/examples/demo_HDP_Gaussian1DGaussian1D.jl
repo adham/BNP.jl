@@ -12,27 +12,6 @@ using BNP
 
 
 
-function collapsed_gibbs_sampler{T1, T2}(
-    hdp::HDP{T1},
-    KK_truncation::Int,
-    xx::Vector{Vector{T2}},
-    zz::Vector{Vector{Int}},
-    n_burnins::Int, n_lags::Int, n_samples::Int,
-    sample_hyperparam::Bool=true, n_internals::Int=10,
-    store_every::Int=100, filename::ASCIIString="HDP_results_",
-    KK_list::Vector{Int}=Int[],
-    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
-
-
-end
-
-
-
-
-
-
-
-
 ## --- synthesizing the data --- ##
 true_gg     = 1.0
 true_aa     = 0.5
