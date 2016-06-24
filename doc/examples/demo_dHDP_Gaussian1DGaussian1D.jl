@@ -9,15 +9,17 @@ Adham Beyki, odinay@gmail.com
 =#
 
 using BNP
+srand(123)
 
 ## --- synthesizing the data --- ##
+#=
 true_gg = 2.0
 true_aa = 0.5
 true_aw = 2
 true_bw = 3
-n_groups = 100
+n_groups = 1000
 n_group_j   = 100 * ones(Int, n_groups)
-KK_truncation = 25
+KK_truncation = 150
 
 
 beta_tilde = rand(Distributions.Beta(1, true_gg), KK_truncation)
@@ -99,6 +101,35 @@ for jj = 1:n_groups
         true_nn[jj, kk] += 1
     end
 end
+=#
+
+
+srand(123)
+
+true_gg     = 2.0
+true_aa     = 0.5
+n_groups    = 100
+n_group_j   = 100 * ones(Int, n_groups)
+join_tables = true
+
+true_tji, true_njt, true_kjt, true_nn, true_mm, true_zz, true_KK = BNP.gen_CRF_data(n_group_j, true_gg, true_aa, join_tables)
+
+vv = 0.001          # fixed variance
+ss = 2
+true_atoms = [Gaussian1D(ss*kk, vv) for kk = 1:true_KK]
+
+true_nn = zeros(Int, n_groups, true_KK)
+xx = Array(Vector{Float64}, n_groups)
+for jj = 1:n_groups
+    xx[jj] = zeros(Float64, n_group_j[jj])
+    for ii = 1:n_group_j[jj]
+        kk = true_zz[jj][ii]
+        xx[jj][ii] = sample(true_atoms[kk])
+        true_nn[jj, kk] += 1
+    end
+end
+
+
 
 
 ## ------- inference -------- ##
@@ -109,7 +140,7 @@ q0 = Gaussian1DGaussian1D(m0, v0, vv)
 
 # constructing the HDP model
 dhdp_KK_init = 1
-KK_truncation = 25
+KK_truncation = 150
 dhdp_gg = 2.0
 dhdp_g1 = 0.1
 dhdp_g2 = 0.1
@@ -143,7 +174,3 @@ KK_list, KK_dict, w_tilde = truncated_gibbs_sampler(dhdp, KK_truncation, xx, zz,
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 posterior_components, nn = posterior(dhdp, xx, KK_dict[candidate_KK], candidate_KK)
-
-
-
-
