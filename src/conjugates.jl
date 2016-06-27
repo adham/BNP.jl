@@ -131,8 +131,8 @@ Model:
 
 type MultinomialDirichlet <: Conjugate
     dd::Int                               # Cardinality
-    pp::Vector{Float64}                   # Multinomial probability vector
     aa::Float64                           # Dirichlet concentration hyper-parameter
+    pp::Vector{Float64}                   # Multinomial probability vector
 
     mm::Int                               # total count in data
     mi::Vector{Int}                       # individual count in data

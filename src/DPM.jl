@@ -33,14 +33,14 @@ function sample_hyperparam!(dpm::DPM, NN::Int, iters::Int)
 
 
     for n = 1:iters
-        eta = rand(Distributions.Beta(dpm.aa+1, NN))
-        rr = (dpm.aa1 + dpm.KK - 1) / (n*(dpm.aa2 - log(eta)))
+        eta_pp = rand(Distributions.Beta(dpm.aa+1, NN))
+        rr = (dpm.aa1 + dpm.KK - 1) / (n*(dpm.aa2 - log(eta_pp)))
         pi_eta = rr / (1.0 + rr)
 
         if rand() < pi_eta
-            dpm.aa = rand(Distributions.Gamma(dpm.aa1+dpm.KK)) / (dpm.aa2-log(eta))
+            dpm.aa = rand(Distributions.Gamma(dpm.aa1+dpm.KK)) / (dpm.aa2-log(eta_pp))
         else
-            dpm.aa = rand(Distributions.Gamma(dpm.aa1+dpm.KK-1)) / (dpm.aa2-log(eta))
+            dpm.aa = rand(Distributions.Gamma(dpm.aa1+dpm.KK-1)) / (dpm.aa2-log(eta_pp))
         end
     end
 end

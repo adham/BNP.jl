@@ -63,16 +63,16 @@ n_samples   = 200
 sample_hyperparam = true
 n_internals = 10
 store_every = 100
+results_path = ""
 filename    = "demo_HDP_Gaussian1DGaussian1D_"
 
 
-#=
- KK_list, KK_dict, betas, gammas, alphas = collapsed_gibbs_sampler(hdp, xx, zz, n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, filename)
+KK_list, KK_dict = collapsed_gibbs_sampler(hdp, xx, zz,
+	n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, results_path, filename)
 
 # posterior distributions
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
 candidate_KK = indmax(KK_hist)
 
-posterior_components, nn, pij = posterior(hdp, xx, KK_dict, candidate_KK)
-=#
+posterior_components, nn, pij = posterior(hdp, xx, KK_dict[candidate_KK], candidate_KK)
 

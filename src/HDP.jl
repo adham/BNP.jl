@@ -5,9 +5,7 @@ Adham Beyki, odinay@gmail.com
 27/10/2015
 
 TODO:
-Check collapsed and CRF sampler
-implement save_samples for CRF
-implement resample_hyperparams for CRF
+Check  CRF sampler
 =#
 
 ###################################################
@@ -51,75 +49,6 @@ end
 count_active_clusters(nn::Matrix{Int}) = length(find(x -> x>0, sum(nn, 1)))
 
 
-function storesample{T}(
-    hdp::HDP{T},
-    KK_list::Vector{Int},
-    KK_dict::Dict{Int, Vector{Vector{Int}}},
-    alphas::Vector{Float64},
-    betas::Vector{Vector{Float64}},
-    gammas::Vector{Float64},
-    n_burnins::Int, n_lags::Int, sample_n::Int,
-    filename::ASCIIString)
-
-    println("storing on disk...")
-    if endswith(filename, "_")
-        dummy_filename = string(filename, sample_n, ".jld")
-    else
-        dummy_filename = string(filename, "_", sample_n, ".jld")
-    end
-
-    JLD.save(dummy_filename,
-        "hdp", hdp,
-        "KK_list", KK_list,
-        "KK_dict", KK_dict,
-        "alphas", alphas, "betas", betas, "gammas", gammas,
-        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
-end
-
-
-#=
-function storesample{T}(
-    hdp::HDP{T},
-    KK_list::Vector{Int},
-    KK_dict::Dict{Int, CRFSample},
-    n_burnins::Int, n_lags::Int, sample_n::Int,
-    filename::ASCIIString)
-
-    println("\nstoring on disk...\n")
-    if endswith(filename, "_")
-        dummy_filename = string(filename, sample_n, ".jld")
-    else
-        dummy_filename = string(filename, "_", sample_n, ".jld")
-    end
-
-    JLD.save(dummy_filename,
-        "hdp", hdp,
-        "KK_list", KK_list,
-        "KK_dict", KK_dict,
-        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
-end
-=#
-function storesample{T}(
-    hdp::HDP{T},
-    KK_list::Vector{Int},
-    KK_dict::Dict{Int, Vector{Vector{Int}}},
-    n_burnins::Int, n_lags::Int, sample_n::Int,
-    filename::ASCIIString)
-
-    println("\nstoring on disk...\n")
-    if endswith(filename, "_")
-        dummy_filename = string(filename, sample_n, ".jld")
-    else
-        dummy_filename = string(filename, "_", sample_n, ".jld")
-    end
-
-    JLD.save(dummy_filename,
-        "hdp", hdp,
-        "KK_list", KK_list,
-        "KK_dict", KK_dict,
-        "n_burnins", n_burnins, "n_lags", n_lags, "sample_n", sample_n)
-end
-
 
 
 function storesample{T}(
@@ -159,8 +88,6 @@ end
 
 
 
-
-
 function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
     #= NOTE
     resampling the group level concentration parameter α0 using auxiliary variables
@@ -175,12 +102,11 @@ function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
     for jj = 1:n_groups
         w[jj] = rand(Distributions.Beta(hdp.aa+1, n_group_j[jj]))
     end
-    p = n_group_j / hdp.aa
-    p ./= (p+1.0)
 
+    pp = n_group_j / hdp.aa
     s = zeros(Int, n_groups)
     for jj = 1:n_groups
-        s[jj] = rand(Distributions.Binomial(1, p[jj]))
+        s[jj] = Int(rand() <= pp[jj] / (pp[jj] + 1.0))
     end
 
     aa_shape = hdp.a1 + m - sum(s)
@@ -188,14 +114,14 @@ function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int)
     hdp.aa = rand(Distributions.Gamma(aa_shape)) / aa_rate
 
     # resampling the top level concentration parameter γ, Escobar and West 95
-    eta = rand(Distributions.Beta(hdp.gg+1, m))
-    rr = (hdp.g1 + hdp.KK - 1) / (m*(hdp.g2 - log(eta)))
+    eta_pp = rand(Distributions.Beta(hdp.gg+1, m))
+    rr = (hdp.g1 + hdp.KK - 1) / (m*(hdp.g2 - log(eta_pp)))
     pi_eta = rr / (1.0 + rr)
 
     if rand() < pi_eta
-        hdp.gg = rand(Distributions.Gamma(hdp.g1 + hdp.KK)) / (hdp.g2-log(eta))
+        hdp.gg = rand(Distributions.Gamma(hdp.g1 + hdp.KK)) / (hdp.g2-log(eta_pp))
     else
-        hdp.gg = rand(Distributions.Gamma(hdp.g1+hdp.KK-1)) / (hdp.g2-log(eta))
+        hdp.gg = rand(Distributions.Gamma(hdp.g1+hdp.KK-1)) / (hdp.g2-log(eta_pp))
     end
 end # sample_hyperparam
 function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int, n_internals::Int)
@@ -204,16 +130,29 @@ function sample_hyperparam!(hdp::HDP, n_group_j::Vector{Int}, m::Int, n_internal
     end
 end # sample_hyperparam
 
+
+
+
 function collapsed_gibbs_sampler{T1, T2}(
     hdp::HDP{T1},
     xx::Vector{Vector{T2}},
     zz::Vector{Vector{Int}},
     n_burnins::Int, n_lags::Int, n_samples::Int,
     sample_hyperparam::Bool=true, n_internals::Int=10,
-    store_every::Int=100, filename::ASCIIString="HDP_results_",
-    KK_list::Vector{Int}=Int[],
-    KK_dict::Dict{Int, Vector{Vector{Int}}}=Dict{Int, Vector{Vector{Int}}}())
+    store_every::Int=100, results_path="", filename::ASCIIString="HDP_results_")
 
+
+
+
+    n_iterations    = n_burnins + (n_samples)*(n_lags+1)
+    n_groups        = length(xx)
+    n_group_j       = zeros(Int, n_groups)
+    nn              = zeros(Int, n_groups, hdp.KK)
+    log_likelihood  = 0.0
+
+    for jj = 1:n_groups
+        n_group_j[jj] = length(zz[jj])
+    end
 
     # constructing components
     components = Array(typeof(hdp.component), hdp.KK)
@@ -221,40 +160,23 @@ function collapsed_gibbs_sampler{T1, T2}(
         components[kk] = deepcopy(hdp.component)
     end
 
-    n_iterations    = n_burnins + (n_samples)*(n_lags+1)
-    n_groups        = length(xx)
-    n_group_j       = zeros(Int, n_groups)
-    nn              = zeros(Int, n_groups, hdp.KK)
-    pp              = zeros(Float64, hdp.KK+1)
-    log_likelihood  = 0.0
-
-    betas  = Array(Vector{Float64}, n_samples)
-    gammas = zeros(Float64, n_samples)
-    alphas = zeros(Float64, n_samples)
-
-    for jj = 1:n_groups
-        n_group_j[jj] = length(zz[jj])
-    end
-
-    if length(KK_list) == 0
-        n_sampels_old = 0
-        KK_list = zeros(Int, n_samples)
-        KK_dict = Dict{Int, Vector{Vector{Int}}}()
-    else
-        n_sampels_old = length(KK_list)
-        KK_list = vcat(KK_list, zeros(Int, n_samples))
-    end
+    KK_list = Int[]
+    KK_dict = Dict{Int, Vector{Vector{Int}}}()
+    
 
     snumbers_file = string(Pkg.dir(), "\\BNP\\src\\StirlingNums_10K.mat")
     snumbers_data = MAT.matread(snumbers_file)
     snumbers = snumbers_data["snumbersNormalizedSparse"]
 
 
-    ################################
-    #    Initializing the model    #
-    ################################
+
+
+    #############################################################
+    #                  Initializing the model                   #
+    #############################################################
     tic()
     print_with_color(:red, "\nInitializing the model\n")
+
     for jj = 1:n_groups
         for ii = 1:n_group_j[jj]
             kk = zz[jj][ii]
@@ -263,16 +185,16 @@ function collapsed_gibbs_sampler{T1, T2}(
             log_likelihood += loglikelihood(components[kk], xx[jj][ii])
         end
     end
-    KK_list[1] = hdp.KK
-    elapsed_time = toq()
+    push!(KK_list, hdp.KK)
 
     my_beta = ones(Float64, hdp.KK+1) / (hdp.KK+1)
 
+    elapsed_time = toq()
 
 
-    ###################################
-    #     starting the MCMC chain     #
-    ###################################
+    ##############################################################
+    #                   starting the MCMC chain                  #
+    ##############################################################
     for iteration = 1:n_iterations
 
         if iteration < n_burnins
@@ -285,6 +207,7 @@ function collapsed_gibbs_sampler{T1, T2}(
 
         tic()
 
+    
         # make sure all the components are active
         for kk = 1:hdp.KK
             if sum(nn[:, kk]) == 0
@@ -299,10 +222,10 @@ function collapsed_gibbs_sampler{T1, T2}(
 
                 my_beta[hdp.KK+1] += my_beta[kk]
                 splice!(my_beta, kk)
-                splice!(pp, kk)
                 hdp.KK -= 1
             end
         end
+
 
         #=
         Now
@@ -320,7 +243,7 @@ function collapsed_gibbs_sampler{T1, T2}(
         for jj = randperm(n_groups)
             for ii = randperm(n_group_j[jj])
 
-
+                
                 ##   1.1   ##
                 #  removing the observation
                 kk = zz[jj][ii]
@@ -328,7 +251,7 @@ function collapsed_gibbs_sampler{T1, T2}(
                 nn[jj, kk] -= 1
 
                 # If as the result of removing xx[jj][ii]
-                # θ_k becomes inactive, remove the atom
+                # phi_k becomes inactive, remove the atom
                 if sum(nn[:, kk]) == 0
                     println("\tcomponent $kk has become inactive")
                     nn = del_column(nn, kk)
@@ -343,17 +266,18 @@ function collapsed_gibbs_sampler{T1, T2}(
                     # removing the stick kk
                     my_beta[hdp.KK+1] += my_beta[kk]
                     splice!(my_beta, kk)
-                    splice!(pp, kk)
                     hdp.KK -= 1
                 end
 
 
                 ##   1.2   ##
                 # resample kk
+                pp = zeros(Float64, hdp.KK+1)
                 for ll = 1:hdp.KK
                     pp[ll] = log(nn[jj, ll] + hdp.aa * my_beta[ll]) + logpredictive(components[ll], xx[jj][ii])
                 end
                 pp[hdp.KK+1] = log(hdp.aa * my_beta[hdp.KK+1]) + logpredictive(hdp.component, xx[jj][ii])
+
                 lognormalize!(pp)
                 kk = sample(pp)
 
@@ -367,7 +291,6 @@ function collapsed_gibbs_sampler{T1, T2}(
                     b_new = my_beta[hdp.KK+1]
                     my_beta[hdp.KK+1] = b * b_new
                     push!(my_beta, (1-b)*b_new)
-                    push!(pp, 0.0)
                     hdp.KK += 1
                 end
 
@@ -381,11 +304,12 @@ function collapsed_gibbs_sampler{T1, T2}(
             end # n_group_j
         end # n_groups
 
-        M = zeros(Int, n_groups, hdp.KK)
-        for hh in 1:n_internals
+
         ##   2  ##
         # resampling β vector using auxiliary variable method
         # Eq. 40, 41 Teh etal 2004
+        M = zeros(Int, n_groups, hdp.KK)
+        for hh in 1:n_internals
             for jj = 1:n_groups
                 for kk = 1:hdp.KK
                     if nn[jj, kk] == 0
@@ -414,30 +338,43 @@ function collapsed_gibbs_sampler{T1, T2}(
         end # n_internals
         elapsed_time = toq()
 
+
+
         # save the sample
         if (iteration-n_burnins) % (n_lags+1) == 0 &&  iteration > n_burnins
-            sample_n = n_sampels_old + convert(Int, (iteration-n_burnins)/(n_lags+1))
-            KK_list[sample_n] = hdp.KK
+            sample_n = convert(Int, (iteration-n_burnins)/(n_lags+1))
+
+            push!(KK_list, hdp.KK)
             KK_dict[hdp.KK] = deepcopy(zz)
-            alphas[sample_n] = hdp.aa
-            betas[sample_n] = deepcopy(my_beta)
-            gammas[sample_n] = hdp.gg
+            
+
+
             if sample_n % store_every == 0
-                storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, n_burnins, n_lags, sample_n, filename)
+                normalized_filename = normpath(joinpath(results_path, filename))
+                storesample(hdp, KK_list, KK_dict, sample_n, normalized_filename)
             end
         end
     end # iteration
 
-    sample_n = n_sampels_old + convert(Int, (n_iterations-n_burnins)/(n_lags+1))
-    KK_list[sample_n] = hdp.KK
-    KK_dict[hdp.KK] = deepcopy(zz)
-    alphas[sample_n] = hdp.aa
-    betas[sample_n] = deepcopy(my_beta)
-    gammas[sample_n] = hdp.gg
-    storesample(hdp, KK_list, KK_dict, alphas, betas, gammas, n_burnins, n_lags, sample_n, filename)
+    sample_n = convert(Int, (n_iterations-n_burnins)/(n_lags+1))
+    normalized_filename = normpath(joinpath(results_path, filename))
+    storesample(hdp, KK_list, KK_dict, sample_n, normalized_filename)
+    
+    KK_dict_flat = Dict{Int, Vector{Int}}()
+    KK_dict_keys = collect(keys(KK_dict))
+    for kk in KK_dict_keys
+        zz_flat = Int[]
+        for jj=1:n_groups
+            append!(zz_flat, KK_dict[kk][jj])
+        end
+        KK_dict_flat[kk] = zz_flat
+    end
 
-    KK_list, KK_dict, betas, gammas, alphas
+    KK_list, KK_dict_flat
+
 end # collapsed_gibbs_sampler!
+
+
 
 
 function CRF_gibbs_sampler{T1, T2}(

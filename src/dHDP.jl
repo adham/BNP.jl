@@ -1,3 +1,4 @@
+using Debug
 #=
 dHDP.jl
 
@@ -80,17 +81,21 @@ function sample_hyperparam!(dhdp::dHDP, n_group_j::Vector{Int}, m::Int)
     Gamma(a, 1/b) = Gamma(a) / b
     =#
 
+
     n_groups = length(n_group_j)
     w = zeros(Float64, n_groups)
     for jj = 1:n_groups
-        w[jj] = rand(Distributions.Beta(dhdp.aa+1, n_group_j[jj]))
+        if n_group_j[jj] == 0
+            w[jj] = 1.0
+        else
+            w[jj] = rand(Distributions.Beta(dhdp.aa+1, n_group_j[jj]))
+        end
     end
-    p = n_group_j / dhdp.aa
-    p ./= (p+1.0)
 
+    pp = n_group_j / dhdp.aa
     s = zeros(Int, n_groups)
     for jj = 1:n_groups
-        s[jj] = rand(Distributions.Binomial(1, p[jj]))
+        s[jj] = Int(rand() <= pp[jj] / (pp[jj] + 1.0))
     end
 
     aa_shape = dhdp.a1 + m - sum(s)
@@ -98,14 +103,16 @@ function sample_hyperparam!(dhdp::dHDP, n_group_j::Vector{Int}, m::Int)
     dhdp.aa = rand(Distributions.Gamma(aa_shape)) / aa_rate
 
     # resampling the top level concentration parameter γ, Escobar and West 95
-    eta = rand(Distributions.Beta(dhdp.gg+1, m))
-    rr = (dhdp.g1 + dhdp.KK - 1) / (m*(dhdp.g2 - log(eta)))
+    eta_pp = rand(Distributions.Beta(dhdp.gg+1, m))
+
+
+    rr = (dhdp.g1 + dhdp.KK - 1) / (m*(dhdp.g2 - log(eta_pp)))
     pi_eta = rr / (1.0 + rr)
 
     if rand() < pi_eta
-        dhdp.gg = rand(Distributions.Gamma(dhdp.g1 + dhdp.KK)) / (dhdp.g2-log(eta))
+        dhdp.gg = rand(Distributions.Gamma(dhdp.g1 + dhdp.KK)) / (dhdp.g2-log(eta_pp))
     else
-        dhdp.gg = rand(Distributions.Gamma(dhdp.g1+dhdp.KK-1)) / (dhdp.g2-log(eta))
+        dhdp.gg = rand(Distributions.Gamma(dhdp.g1+dhdp.KK-1)) / (dhdp.g2-log(eta_pp))
     end
 end # sample_hyperparam
 
@@ -239,6 +246,8 @@ function truncated_gibbs_sampler{T1, T2}(
 
     for iteration = 1:n_iterations
 
+
+
         # Verbose
         if iteration < n_burnins
             print_with_color(:blue, "Burning... ")
@@ -334,13 +343,19 @@ function truncated_gibbs_sampler{T1, T2}(
             w_tilde[ll+1] = rand(Distributions.Beta(left, right))
         end
         
+        # TODO
+        # left is fiferent from right
+        #left -> 0
+        #right -> 1
         for ll = 1:n_groups
             for kk = 1:KK_truncation-1
                 left  = dhdp.aa * my_beta[kk] + nrz[ll, kk]
                 right = dhdp.aa * (1-sum(my_beta[1:kk])) + sum(nrz[ll, kk+1:KK_truncation])
-
-                if left < BETA_THRESHOLD || right < BETA_THRESHOLD
+                if left < BETA_THRESHOLD
                     pi_tilde[ll, kk] = 0.0
+                elseif right < BETA_THRESHOLD
+                    pi_tilde[ll, kk] = 1.0
+                    break
                 else
                     pi_tilde[ll, kk] = rand(Distributions.Beta(left, right))
                 end
@@ -349,6 +364,7 @@ function truncated_gibbs_sampler{T1, T2}(
             logpi[ll, :] = log_stick_breaking(pi_tilde[ll, :][:])
         end
 
+        nrz_jj = vec(sum(nrz, 2))
         if sample_hyperparam
             M = zeros(Int, n_groups, KK_truncation)
             for hh in 1:n_internals
@@ -370,7 +386,7 @@ function truncated_gibbs_sampler{T1, T2}(
                 end # n_groups
 
                 m = sum(M)
-                sample_hyperparam!(dhdp, n_group_j, m)
+                sample_hyperparam!(dhdp, nrz_jj, m)
             end # n_internals
         end # sample_hyperparam
 
@@ -634,9 +650,6 @@ function truncated_gibbs_sampler2{T1, T2}(
                     KK_flag = false
                 end
 
-
-
-
             end # ii
         end # jj
 
@@ -700,14 +713,18 @@ function truncated_gibbs_sampler2{T1, T2}(
 
         for ll = 1:n_groups
             for kk = 1:dhdp.KK
-                gamma1 = dhdp.aa * my_beta[kk] + nrz[ll, kk]
-                gamma2 = dhdp.aa * (1-sum(my_beta[1:kk])) + sum(nrz[ll, kk+1:dhdp.KK])
+                left  = dhdp.aa * my_beta[kk] + nrz[ll, kk]
+                right = dhdp.aa * (1-sum(my_beta[1:kk])) + sum(nrz[ll, kk+1:dhdp.KK])
 
-                if gamma1 < BETA_THRESHOLD || gamma2 < BETA_THRESHOLD
+                if left < BETA_THRESHOLD
                     pi_tilde[ll, kk] = 0.0
+                elseif right < BETA_THRESHOLD
+                    pi_tilde[ll, kk] = 1.0
+                    break
                 else
-                    pi_tilde[ll, kk] = rand(Distributions.Beta(gamma1, gamma2))
+                    pi_tilde[ll, kk] = rand(Distributions.Beta(left, right))
                 end
+
             end
             pi_tilde[ll, dhdp.KK+1] = 1.0
             logpi[ll, :] = log_stick_breaking(pi_tilde[ll, :][:])
