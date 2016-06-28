@@ -140,7 +140,6 @@ q0 = Gaussian1DGaussian1D(m0, v0, vv)
 
 # constructing the HDP model
 dhdp_KK_init = 1
-KK_truncation = 150
 dhdp_gg = 2.0
 dhdp_g1 = 0.1
 dhdp_g2 = 0.1
@@ -168,7 +167,7 @@ results_path = ""
 filename    = "demo_dHDP_Gaussian1DGaussian1D_"
 
 
-KK_list, KK_dict, w_tilde = truncated_gibbs_sampler(dhdp, KK_truncation, xx, zz, 
+KK_list, KK_dict, w_tilde = truncated_gibbs_sampler(dhdp, xx, zz, 
     n_burnins, n_lags, n_samples, sample_hyperparam, n_internals, store_every, results_path, filename)
 
 KK_hist = hist(KK_list, 0.5:maximum(KK_list)+0.5)[2]
